@@ -55,7 +55,21 @@ const GRAPH_DATA = {
       label: "Second-Wave Feminism",
       eyebrow: "Historical wave",
       description: "Mid-20th century feminism addressing sexuality, family, the workplace, and reproductive rights, alongside sharp internal debates.",
-      resources: [The Second Sex by Simone de Beauvoir]
+      resources: [
+        {
+          type: "Articles",
+          items: [
+            { title: "Demarginalizing the Intersection of Race and Sex", url: "https://chicagounbound.uchicago.edu/uclf/vol1989/iss1/8/", meta: "Kimberlé Crenshaw, 1989 — coined the term 'intersectionality'" },
+            { title: "Mapping the Margins: Intersectionality, Identity Politics, and Violence Against Women of Color", url: "https://www.jstor.org/stable/1229039", meta: "Kimberlé Crenshaw, Stanford Law Review, 1991" }
+          ]
+        },
+        {
+          type: "Books",
+          items: [
+            { title: "The Second Sex" }
+          ]
+        }
+      ]
     },
     {
       id: "third-wave",
