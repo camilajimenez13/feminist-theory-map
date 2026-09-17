@@ -56,6 +56,12 @@
     stroke: var(--line);
     stroke-width: 1;
   }
+  .link.related{
+    stroke: var(--sage-dim);
+    stroke-width: 1;
+    stroke-dasharray: 3,3;
+    opacity: 0.7;
+  }
   .node circle{
     stroke: var(--bg);
     stroke-width: 2;
@@ -66,6 +72,17 @@
   .node.branch circle{ fill: var(--sage-dim); }
   .node.branch:hover circle{ fill: var(--sage); }
   .node.branch.active circle{ fill: var(--accent); }
+  .node.child circle{ fill: var(--sage-dim); opacity: .8; }
+  .node.child:hover circle{ fill: var(--sage); opacity: 1; }
+  .node.child.active circle{ fill: var(--accent); opacity: 1; }
+  .node.expandable circle{ stroke-dasharray: 3,2; }
+  .expand-badge{
+    fill: var(--bg);
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 700;
+    pointer-events:none;
+  }
 
   .node text{
     fill: var(--ink);
@@ -77,6 +94,7 @@
     stroke-width: 3px;
   }
   .node.center text{ font-size: var(--center-label-size); fill: var(--ink); }
+  .node.child text{ font-size: calc(var(--node-label-size) * 0.82); opacity: .85; }
 
   #panel{
     position:fixed; top:0; right:0; height:100%;
@@ -164,6 +182,48 @@
     #panel{ width:100%; max-width:100%; }
     footer{ padding:12px 20px; font-size:.68rem; }
   }
+
+  /* ---- filter bar ---- */
+  #filter-bar{
+    position:fixed; top:0; left:0; right:0; z-index:9;
+    display:flex; flex-wrap:wrap; gap: 6px 10px;
+    padding: 82px 32px 10px;
+    pointer-events:none;
+    font-family: var(--sans);
+    max-width: 900px;
+  }
+  .facet-group{
+    display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+    pointer-events:auto;
+  }
+  .facet-group .facet-name{
+    font-size:.68rem; text-transform:uppercase; letter-spacing:.05em;
+    color: var(--ink-dim); margin-right:2px;
+  }
+  .tag-chip{
+    font-size:.72rem; padding:4px 10px; border-radius:999px;
+    border:1px solid var(--line); background: transparent;
+    color: var(--ink-dim); cursor:pointer;
+    transition: all .15s ease;
+  }
+  .tag-chip:hover{ border-color: var(--sage); color: var(--ink); }
+  .tag-chip.selected{
+    background: var(--accent); border-color: var(--accent); color: var(--ink);
+  }
+  #clear-filters{
+    font-size:.72rem; color: var(--ink-dim); background:none; border:none;
+    cursor:pointer; text-decoration:underline; padding:4px 6px;
+    pointer-events:auto; display:none;
+  }
+  #clear-filters.visible{ display:inline-block; }
+
+  .node.dimmed{ opacity: .15; }
+  .link.dimmed{ opacity: .08; }
+
+  @media (max-width: 640px){
+    #filter-bar{ padding: 70px 16px 8px; }
+    .facet-group .facet-name{ display:none; }
+  }
 </style>
 </head>
 <body>
@@ -172,6 +232,8 @@
   <h1 id="page-title">Feminist Theory</h1>
   <p>Click a point to open its reading list.</p>
 </header>
+
+<div id="filter-bar"></div>
 
 <svg id="graph"></svg>
 
@@ -223,6 +285,83 @@ if (GRAPH_DATA.title) {
   document.getElementById('page-title').textContent = GRAPH_DATA.title;
 }
 
+// ---- build the filter bar from FACETS (in data.js) ----
+// selectedByFacet: facet name -> Set of selected tag values within that facet.
+// Logic: OR within a facet group (selecting two Eras shows nodes matching
+// either), AND across facet groups (adding a Theme on top of a Region
+// narrows to nodes matching both) — the standard faceted-search pattern.
+const selectedByFacet = new Map();
+const filterBar = document.getElementById('filter-bar');
+
+if (typeof FACETS !== 'undefined'){
+  Object.entries(FACETS).forEach(([facetName, values]) => {
+    selectedByFacet.set(facetName, new Set());
+    const group = document.createElement('div');
+    group.className = 'facet-group';
+    group.innerHTML = `<span class="facet-name">${facetName}</span>`;
+    values.forEach(val => {
+      const chip = document.createElement('button');
+      chip.className = 'tag-chip';
+      chip.textContent = val;
+      chip.onclick = () => {
+        const set = selectedByFacet.get(facetName);
+        if (set.has(val)) set.delete(val); else set.add(val);
+        chip.classList.toggle('selected');
+        applyFilters();
+      };
+      group.appendChild(chip);
+    });
+    filterBar.appendChild(group);
+  });
+
+  const clearBtn = document.createElement('button');
+  clearBtn.id = 'clear-filters';
+  clearBtn.textContent = 'Clear filters';
+  clearBtn.onclick = () => {
+    selectedByFacet.forEach(set => set.clear());
+    document.querySelectorAll('.tag-chip.selected').forEach(c => c.classList.remove('selected'));
+    applyFilters();
+  };
+  filterBar.appendChild(clearBtn);
+}
+
+function nodeMatchesFilters(d){
+  if (d.type === 'center') return true;
+  const tags = d.tags || [];
+  // must satisfy every facet group that has at least one selection —
+  // "satisfy" meaning it carries at least one of that group's selected tags
+  for (const [, selectedSet] of selectedByFacet){
+    if (selectedSet.size === 0) continue; // this facet isn't being filtered on
+    const matchesThisFacet = tags.some(t => selectedSet.has(t));
+    if (!matchesThisFacet) return false;
+  }
+  return true;
+}
+
+function anyFilterActive(){
+  for (const [, set] of selectedByFacet) if (set.size > 0) return true;
+  return false;
+}
+
+function applyFilters(){
+  const active = anyFilterActive();
+  document.getElementById('clear-filters').classList.toggle('visible', active);
+
+  if (!active){
+    nodeSel.classed('dimmed', false);
+    linkSel.classed('dimmed', false);
+    return;
+  }
+
+  nodeSel.classed('dimmed', d => !nodeMatchesFilters(d));
+
+  linkSel.classed('dimmed', d => {
+    const sourceOk = d.source.type === 'center' || nodeMatchesFilters(d.source);
+    const targetOk = d.target.type === 'center' || nodeMatchesFilters(d.target);
+    return !(sourceOk && targetOk);
+  });
+}
+
 const width = window.innerWidth;
 const height = window.innerHeight;
 
@@ -235,53 +374,150 @@ svg.call(d3.zoom().scaleExtent([0.4, 2.5]).on('zoom', (event) => {
 
 const centerNode = { id: '__center__', label: GRAPH_DATA.title || 'Feminist Theory', type: 'center' };
 const branchNodes = GRAPH_DATA.branches.map(b => ({ ...b, type: 'branch' }));
-const nodes = [centerNode, ...branchNodes];
-const links = branchNodes.map(b => ({ source: '__center__', target: b.id }));
 
-const simulation = d3.forceSimulation(nodes)
-  .force('link', d3.forceLink(links).id(d => d.id).distance(150).strength(0.6))
-  .force('charge', d3.forceManyBody().strength(-420))
-  .force('center', d3.forceCenter(width/2, height/2))
-  .force('collision', d3.forceCollide().radius(d => nodeRadius(d) + 24));
-
-const link = g.append('g')
-  .selectAll('line')
-  .data(links)
-  .join('line')
-  .attr('class', 'link');
-
-const node = g.append('g')
-  .selectAll('g')
-  .data(nodes)
-  .join('g')
-  .attr('class', d => 'node ' + d.type)
-  .call(drag(simulation))
-  .on('click', (event, d) => {
-    if (d.type === 'branch') openPanel(d);
+// flatten any branch's "children" array into its own set of smaller nodes,
+// tagged with which branch they belong to (parentId). These start hidden
+// and only appear once their parent is clicked (expand/collapse).
+const allChildNodes = [];
+GRAPH_DATA.branches.forEach(b => {
+  (b.children || []).forEach(child => {
+    allChildNodes.push({ ...child, type: 'child', parentId: b.id });
   });
+});
 
-node.append('circle')
-  .attr('r', d => nodeRadius(d));
+// which parent branches are currently "expanded" (showing their children)
+const expandedParents = new Set();
 
-node.append('text')
-  .text(d => d.label)
-  .attr('text-anchor', 'middle')
-  .attr('dy', d => nodeRadius(d) + 16);
+// links between branches, from each branch's optional "related" list.
+// de-duplicated so an A→B and B→A pair only draws one line. Static —
+// doesn't change on expand/collapse.
+const seenPairs = new Set();
+const relatedLinks = [];
+branchNodes.forEach(b => {
+  (b.related || []).forEach(otherId => {
+    const exists = branchNodes.some(n => n.id === otherId);
+    if (!exists) return; // silently skip a typo'd id rather than breaking the graph
+    const pairKey = [b.id, otherId].sort().join('::');
+    if (seenPairs.has(pairKey)) return;
+    seenPairs.add(pairKey);
+    relatedLinks.push({ source: b.id, target: otherId, kind: 'related' });
+  });
+});
+
+const simulation = d3.forceSimulation()
+  .force('link', d3.forceLink().id(d => d.id)
+    .distance(d => d.kind === 'child' ? 70 : 150)
+    .strength(d => d.kind === 'child' ? 0.8 : 0.6))
+  .force('charge', d3.forceManyBody().strength(d => d.type === 'child' ? -150 : -420))
+  .force('center', d3.forceCenter(width/2, height/2))
+  .force('collision', d3.forceCollide().radius(d => nodeRadius(d) + (d.type === 'child' ? 10 : 24)));
+
+let linkSel = g.append('g').selectAll('line');
+let nodeSel = g.append('g').selectAll('g');
+
+function hasChildren(d){
+  return d.type === 'branch' && (d.children || []).length > 0;
+}
 
 function nodeRadius(d){
   if (d.type === 'center') return THEME.sizing.centerNodeRadius;
   const count = (d.resources || []).reduce((sum, group) => sum + group.items.length, 0);
+  if (d.type === 'child'){
+    const minR = THEME.sizing.childNodeMinRadius ?? (THEME.sizing.branchNodeMinRadius * 0.65);
+    const growth = THEME.sizing.childNodeGrowth ?? (THEME.sizing.branchNodeGrowth * 0.75);
+    return minR + Math.min(count, 10) * growth;
+  }
   return THEME.sizing.branchNodeMinRadius + Math.min(count, 10) * THEME.sizing.branchNodeGrowth;
 }
 
+function currentNodes(){
+  const visibleChildren = allChildNodes.filter(c => expandedParents.has(c.parentId));
+  return [centerNode, ...branchNodes, ...visibleChildren];
+}
+
+function currentLinks(){
+  const centerLinks = branchNodes.map(b => ({ source: '__center__', target: b.id, kind: 'center' }));
+  const visibleChildren = allChildNodes.filter(c => expandedParents.has(c.parentId));
+  const childLinks = visibleChildren.map(c => ({ source: c.parentId, target: c.id, kind: 'child' }));
+  return [...centerLinks, ...childLinks, ...relatedLinks];
+}
+
+function updateGraph(){
+  const nodes = currentNodes();
+  const links = currentLinks();
+
+  // seed new child nodes near their parent's current position, so they
+  // animate outward from it instead of popping in from a random spot
+  nodes.forEach(n => {
+    if (n.type === 'child' && n.x === undefined){
+      const parent = nodes.find(p => p.id === n.parentId);
+      if (parent){
+        n.x = parent.x + (Math.random() - 0.5) * 20;
+        n.y = parent.y + (Math.random() - 0.5) * 20;
+      }
+    }
+  });
+
+  linkSel = linkSel.data(links, d => (d.source.id || d.source) + '->' + (d.target.id || d.target));
+  linkSel.exit().remove();
+  linkSel = linkSel.enter()
+    .append('line')
+    .attr('class', d => 'link' + (d.kind === 'related' ? ' related' : ''))
+    .merge(linkSel);
+
+  nodeSel = nodeSel.data(nodes, d => d.id);
+  nodeSel.exit().remove();
+
+  const nodeEnter = nodeSel.enter()
+    .append('g')
+    .attr('class', d => 'node ' + d.type + (hasChildren(d) ? ' expandable' : ''))
+    .call(drag(simulation))
+    .on('click', (event, d) => {
+      if (d.type === 'branch' || d.type === 'child') openPanel(d);
+      if (hasChildren(d)){
+        if (expandedParents.has(d.id)) expandedParents.delete(d.id);
+        else expandedParents.add(d.id);
+        updateGraph();
+      }
+    });
+
+  nodeEnter.append('circle').attr('r', d => nodeRadius(d));
+  nodeEnter.append('text')
+    .text(d => d.label)
+    .attr('text-anchor', 'middle')
+    .attr('dy', d => nodeRadius(d) + 16);
+
+  // small "+" / "−" badge on nodes that have children, so it's visible
+  // they're expandable before you click them
+  nodeEnter.filter(d => hasChildren(d))
+    .append('text')
+    .attr('class', 'expand-badge')
+    .attr('text-anchor', 'middle')
+    .attr('dy', 4);
+
+  nodeSel = nodeEnter.merge(nodeSel);
+
+  nodeSel.classed('expanded', d => expandedParents.has(d.id));
+  nodeSel.select('.expand-badge')
+    .text(d => expandedParents.has(d.id) ? '−' : '+');
+
+  simulation.nodes(nodes);
+  simulation.force('link').links(links);
+  simulation.alpha(0.6).restart();
+
+  if (typeof applyFilters === 'function') applyFilters();
+}
+
 simulation.on('tick', () => {
-  link
+  linkSel
     .attr('x1', d => d.source.x)
     .attr('y1', d => d.source.y)
     .attr('x2', d => d.target.x)
     .attr('y2', d => d.target.y);
-  node.attr('transform', d => `translate(${d.x},${d.y})`);
+  nodeSel.attr('transform', d => `translate(${d.x},${d.y})`);
 });
+
+updateGraph();
 
 function drag(sim){
   function dragstarted(event, d){
@@ -305,10 +541,10 @@ const panel = document.getElementById('panel');
 const overlay = document.getElementById('overlay');
 
 function openPanel(d){
-  d3.selectAll('.node.branch').classed('active', false);
-  d3.selectAll('.node.branch').filter(n => n.id === d.id).classed('active', true);
+  d3.selectAll('.node.branch, .node.child').classed('active', false);
+  d3.selectAll('.node.branch, .node.child').filter(n => n.id === d.id).classed('active', true);
 
-  document.getElementById('panel-eyebrow').textContent = d.eyebrow || 'Branch';
+  document.getElementById('panel-eyebrow').textContent = d.eyebrow || (d.type === 'child' ? 'Sub-topic' : 'Branch');
   document.getElementById('panel-title').textContent = d.label;
   document.getElementById('panel-desc').textContent = d.description || '';
 
@@ -319,10 +555,11 @@ function openPanel(d){
   const hasAny = groups.some(g => g.items && g.items.length);
 
   if (!hasAny){
+    const kindWord = d.type === 'child' ? 'sub-topic' : 'branch';
     list.innerHTML = `
       <div class="empty-state">
-        No resources added yet for this branch.<br><br>
-        Add some by editing <code>data.js</code> — find the branch with
+        No resources added yet for this ${kindWord}.<br><br>
+        Add some by editing <code>data.js</code> — find the ${kindWord} with
         <code>id: "${d.id}"</code> and add items to its <code>resources</code> array.
       </div>`;
   } else {
@@ -354,7 +591,7 @@ function openPanel(d){
 function closePanel(){
   panel.classList.remove('open');
   overlay.classList.remove('open');
-  d3.selectAll('.node.branch').classed('active', false);
+  d3.selectAll('.node.branch, .node.child').classed('active', false);
 }
 
 window.addEventListener('keydown', (e) => {

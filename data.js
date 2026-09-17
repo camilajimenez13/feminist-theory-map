@@ -37,7 +37,88 @@
      resources it has.
    - To add a whole new branch, copy one of the blocks below, paste it
      as a new item in the array, and give it a unique "id".
+   HOW CONNECTIONS BETWEEN NODES WORK (optional, not used by default)
+   ---------------------------------------------------------------------
+   Every branch automatically connects to the center. If you ever want to
+   ALSO connect two branches directly to each other, add a "related" list
+   of ids to a branch:
+
+     related: ["black-feminism", "postcolonial-decolonial"]
+
+   You only need to add this to ONE side of the pair. Related connections
+   draw as dashed lines, distinct from the solid center lines.
+
+   A note before you use this: almost any two branches of feminist theory
+   are related in some sense, so it's easy to end up drawing a line
+   between everything and ending up with a tangle instead of a map.
+   Consider using this only for direct, citable relationships (e.g. one
+   text explicitly responds to or builds on another) rather than general
+   thematic overlap — and consider whether a shared resource in both
+   branches' reading lists tells the story better than a line does.
+
+   HOW SUB-NODES WORK (a branch that has its own smaller nodes)
+   ---------------------------------------------------------------------
+   Some topics are big enough to have their own internal branches — e.g.
+   "Masculinities Studies" might have "Hegemonic Masculinity",
+   "Pro-Feminist Men's Movements", etc. as sub-topics, and "Regional &
+   Global South Feminisms" might have "Latin American Feminisms",
+   "African Feminisms", etc.
+
+   To do this, add a "children" array to a branch. Each child follows the
+   exact same shape as a branch (id, label, eyebrow, description,
+   resources) — it's just visually smaller and connects to its parent
+   node instead of to the center:
+
+   {
+     id: "masculinities",
+     label: "Masculinities Studies",
+     eyebrow: "Field",
+     description: "...",
+     resources: [],
+     children: [
+       {
+         id: "hegemonic-masculinity",
+         label: "Hegemonic Masculinity",
+         eyebrow: "Sub-topic",
+         description: "...",
+         resources: []
+       }
+     ]
+   }
+
+   Every child still needs its own unique "id", and clicking a child node
+   opens the same kind of reading-list panel as any branch does.
+
+   HOW TAGS / FILTERS WORK (optional — cross-cutting facets)
+   ---------------------------------------------------------------------
+   A branch or child can genuinely belong to several independent
+   categories at once (e.g. a text can be Second-Wave AND Radical AND
+   about GBV). Rather than forcing it into one box, add a "tags" array
+   to any node using values from FACETS below:
+
+     tags: ["Second-Wave", "Radical", "Gender-Based Violence"]
+
+   These power the filter bar at the top of the page — clicking a tag
+   there highlights every node that carries it and dims the rest,
+   regardless of which "branch" they technically live under.
+
+   Filter logic: clicking two tags WITHIN the same facet group (e.g. two
+   Eras) shows nodes matching EITHER one — you rarely want a text to
+   belong to two eras at once, so this is an "or". Clicking tags ACROSS
+   different facet groups (e.g. a Region and a Theme) narrows results to
+   nodes matching BOTH — that combination is usually meaningful (e.g.
+   "gender-based violence" work specifically "from Latin America").
+
+   You can add new tag values freely — just add them to the matching
+   list in FACETS, and they'll show up in the filter bar automatically.
    ========================================================================== */
+
+const FACETS = {
+  "Era":       ["First-Wave", "Second-Wave", "Third-Wave", "Fourth-Wave"],
+  "Tradition": ["Radical", "Liberal", "Marxist/Socialist", "Postcolonial/Decolonial", "Black Feminist", "Queer", "Eco-Feminist"],
+  "Region":    ["Latin America", "Africa", "South Asia", "MENA", "Global/Western"],
+  "Theme":     ["Gender-Based Violence", "Reproductive Justice", "Economics", "Language", "Masculinities"]
+};
 
 const GRAPH_DATA = {
   title: "Feminist Theory",
@@ -55,21 +136,8 @@ const GRAPH_DATA = {
       label: "Second-Wave Feminism",
       eyebrow: "Historical wave",
       description: "Mid-20th century feminism addressing sexuality, family, the workplace, and reproductive rights, alongside sharp internal debates.",
-      resources: [
-        {
-          type: "Articles",
-          items: [
-            { title: "Demarginalizing the Intersection of Race and Sex", url: "https://chicagounbound.uchicago.edu/uclf/vol1989/iss1/8/", meta: "Kimberlé Crenshaw, 1989 — coined the term 'intersectionality'" },
-            { title: "Mapping the Margins: Intersectionality, Identity Politics, and Violence Against Women of Color", url: "https://www.jstor.org/stable/1229039", meta: "Kimberlé Crenshaw, Stanford Law Review, 1991" }
-          ]
-        },
-        {
-          type: "Books",
-          items: [
-            { title: "The Second Sex", url: "https://en.wikipedia.org/wiki/The_Second_Sex", meta: "Simone de Beauvoir, 1949" }
-          ]
-        }
-      ]
+      tags: ["Second-Wave"],
+      resources: []
     },
     {
       id: "third-wave",
@@ -90,6 +158,7 @@ const GRAPH_DATA = {
       label: "Intersectionality",
       eyebrow: "Framework",
       description: "The study of how race, class, gender, sexuality, and other axes of identity combine to produce distinct, compounded experiences of power and oppression.",
+      tags: ["Third-Wave", "Black Feminist"],
       resources: [
         {
           type: "Articles",
@@ -111,6 +180,7 @@ const GRAPH_DATA = {
       label: "Black Feminist Thought",
       eyebrow: "Tradition",
       description: "A body of theory centering Black women's experience, from the Combahee River Collective to contemporary scholarship on race and gender.",
+      tags: ["Black Feminist", "Second-Wave"],
       resources: [
         {
           type: "Articles",
@@ -132,6 +202,7 @@ const GRAPH_DATA = {
       label: "Postcolonial & Decolonial Feminism",
       eyebrow: "Tradition",
       description: "Critiques of Western feminist universalism, centering colonial history, Global South knowledge production, and epistemic justice.",
+      tags: ["Postcolonial/Decolonial"],
       resources: [
         {
           type: "Articles",
@@ -147,6 +218,7 @@ const GRAPH_DATA = {
       label: "Radical Feminism",
       eyebrow: "Tradition",
       description: "A tradition locating patriarchy as a root structural system, with historical focus on male violence, sexuality, and reproduction.",
+      tags: ["Radical", "Second-Wave"],
       resources: []
     },
     {
@@ -161,6 +233,7 @@ const GRAPH_DATA = {
       label: "Marxist & Socialist Feminism",
       eyebrow: "Tradition",
       description: "Feminism analyzing gender oppression through class, labor, and capitalism, including debates on social reproduction and domestic work.",
+      tags: ["Marxist/Socialist", "Economics"],
       resources: []
     },
     {
@@ -168,6 +241,7 @@ const GRAPH_DATA = {
       label: "Queer Theory",
       eyebrow: "Framework",
       description: "Theory challenging fixed categories of gender and sexuality, with roots in feminist and LGBTQ+ scholarship.",
+      tags: ["Third-Wave", "Queer"],
       resources: []
     },
     {
@@ -182,6 +256,7 @@ const GRAPH_DATA = {
       label: "Eco-Feminism",
       eyebrow: "Framework",
       description: "Theory linking the domination of women and the domination of nature, and organizing at the intersection of gender and environmental justice.",
+      tags: ["Eco-Feminist", "Third-Wave"],
       resources: []
     },
     {
@@ -189,6 +264,7 @@ const GRAPH_DATA = {
       label: "Feminist Economics",
       eyebrow: "Framework",
       description: "Analysis of unpaid care work, labor markets, and economic policy through a gender lens, including critiques of GDP and mainstream economic modeling.",
+      tags: ["Economics"],
       resources: [
         {
           type: "Books",
@@ -229,6 +305,7 @@ const GRAPH_DATA = {
       label: "Gender-Based Violence",
       eyebrow: "Applied focus",
       description: "Theory and research on intimate partner violence, femicide, structural violence, and policy responses across contexts.",
+      tags: ["Gender-Based Violence"],
       resources: [
         {
           type: "Articles",
@@ -250,6 +327,78 @@ const GRAPH_DATA = {
       eyebrow: "Applied focus",
       description: "A framework, distinct from a narrower 'choice' framing, centering the right to have children, not have children, and parent in safe conditions.",
       resources: []
+    },
+    {
+      id: "masculinities",
+      label: "Masculinities Studies",
+      eyebrow: "Field",
+      description: "The study of masculinity as a socially constructed, historically variable category — including its relationship to power, violence, and feminist theory.",
+      tags: ["Masculinities"],
+      resources: [],
+      children: [
+        {
+          id: "hegemonic-masculinity",
+          label: "Hegemonic Masculinity",
+          eyebrow: "Sub-topic",
+          description: "The concept, developed by R.W. Connell, of a dominant, socially exalted form of masculinity that other masculinities are positioned against.",
+          resources: []
+        },
+        {
+          id: "profeminist-mens-movements",
+          label: "Pro-Feminist Men's Movements",
+          eyebrow: "Sub-topic",
+          description: "Organizing by men explicitly aligned with feminist goals, often focused on unlearning patriarchal socialization and ending gender-based violence.",
+          resources: []
+        },
+        {
+          id: "masculinity-development",
+          label: "Masculinities in Development Policy",
+          eyebrow: "Sub-topic",
+          description: "How international development and public health programs engage men and masculinity to address gender-based violence and inequality.",
+          resources: []
+        }
+      ]
+    },
+    {
+      id: "regional-feminisms",
+      label: "Regional & Global South Feminisms",
+      eyebrow: "Field",
+      description: "Feminist movements and theory developed within specific regional, cultural, and political contexts, often distinct from and in dialogue with Western feminist traditions.",
+      resources: [],
+      children: [
+        {
+          id: "latin-american-feminisms",
+          label: "Latin American Feminisms",
+          eyebrow: "Regional movement",
+          description: "Feminist movements and theory across Latin America, including debates on femicide, popular feminism, and decolonial thought.",
+          tags: ["Latin America", "Gender-Based Violence"],
+          resources: []
+        },
+        {
+          id: "african-feminisms",
+          label: "African Feminisms",
+          eyebrow: "Regional movement",
+          description: "Feminist movements and scholarship across the African continent, often explicitly distinguishing themselves from Western feminist frameworks (e.g. 'womanism', 'motherism', 'Stiwanism').",
+          tags: ["Africa"],
+          resources: []
+        },
+        {
+          id: "south-asian-feminisms",
+          label: "South Asian Feminisms",
+          eyebrow: "Regional movement",
+          description: "Feminist movements and theory across South Asia, engaging caste, colonial history, religion, and postcolonial state politics.",
+          tags: ["South Asia"],
+          resources: []
+        },
+        {
+          id: "middle-east-feminisms",
+          label: "Middle Eastern & North African Feminisms",
+          eyebrow: "Regional movement",
+          description: "Feminist movements and scholarship across the MENA region, including debates on Islamic feminism, secular feminism, and state politics.",
+          tags: ["MENA"],
+          resources: []
+        }
+      ]
     }
   ]
 };
