@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feminist Theory — A Map</title>
+<style>
+  /* All values below are placeholders — theme.js overwrites them
+     as CSS variables the moment the page loads. You do not need to
+     edit anything in this <style> block. Go to theme.js instead. */
+  :root{
+    --bg: #15130F;
+    --bg-soft: #1C1A15;
+    --ink: #EDE7DA;
+    --ink-dim: #A9A392;
+    --line: #3A362C;
+    --accent: #B23A4E;
+    --accent-dim: #6E2A34;
+    --sage: #7C8A70;
+    --sage-dim: #4A5443;
+    --serif: Georgia, serif;
+    --sans: -apple-system, sans-serif;
+    --title-size: 1.5rem;
+    --node-label-size: 13px;
+    --center-label-size: 16px;
+    --panel-width: 380px;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--bg); color:var(--ink);
+    font-family: var(--serif);
+    overflow:hidden;
+  }
+  .ui-font{ font-family: var(--sans); }
+
+  header{
+    position:fixed; top:0; left:0; right:0; z-index:10;
+    padding: 28px 32px 14px;
+    pointer-events:none;
+  }
+  header h1{
+    margin:0; font-size: var(--title-size); font-weight:400; letter-spacing:.02em;
+    color:var(--ink); font-family: var(--serif);
+  }
+  header p{
+    margin:6px 0 0; font-size:.85rem; color:var(--ink-dim);
+    font-family: var(--sans);
+    max-width:38ch; line-height:1.5;
+  }
+
+  svg{ display:block; width:100%; height:100%; cursor:grab; }
+  svg:active{ cursor:grabbing; }
+
+  .link{
+    stroke: var(--line);
+    stroke-width: 1;
+  }
+  .node circle{
+    stroke: var(--bg);
+    stroke-width: 2;
+    transition: fill .15s ease, r .15s ease;
+    cursor:pointer;
+  }
+  .node.center circle{ fill: var(--accent); }
+  .node.branch circle{ fill: var(--sage-dim); }
+  .node.branch:hover circle{ fill: var(--sage); }
+  .node.branch.active circle{ fill: var(--accent); }
+
+  .node text{
+    fill: var(--ink);
+    font-size: var(--node-label-size);
+    font-family: var(--serif);
+    pointer-events:none;
+    paint-order: stroke;
+    stroke: var(--bg);
+    stroke-width: 3px;
+  }
+  .node.center text{ font-size: var(--center-label-size); fill: var(--ink); }
+
+  #panel{
+    position:fixed; top:0; right:0; height:100%;
+    width: var(--panel-width); max-width: 86vw;
+    background: var(--bg-soft);
+    border-left: 1px solid var(--line);
+    transform: translateX(100%);
+    transition: transform .32s cubic-bezier(.16,1,.3,1);
+    z-index: 20;
+    display:flex; flex-direction:column;
+    font-family: var(--sans);
+  }
+  #panel.open{ transform: translateX(0); }
+
+  #panel .panel-head{
+    padding: 28px 28px 16px;
+    border-bottom: 1px solid var(--line);
+    position:relative;
+  }
+  #panel .panel-head .eyebrow{
+    font-size:.7rem; color: var(--sage);
+    margin: 0 0 6px;
+  }
+  #panel h2{
+    font-family: var(--serif);
+    font-size: 1.4rem; font-weight:400; margin:0 0 8px; color:var(--ink);
+  }
+  #panel .desc{
+    font-size:.85rem; color:var(--ink-dim); line-height:1.6; margin:0;
+  }
+  #panel .close-btn{
+    position:absolute; top:24px; right:24px;
+    background:none; border:none; color:var(--ink-dim);
+    font-size:1.4rem; cursor:pointer; line-height:1;
+    padding:4px;
+  }
+  #panel .close-btn:hover{ color:var(--ink); }
+
+  #resource-list{
+    flex:1; overflow-y:auto; padding: 8px 28px 28px;
+  }
+  .resource-group{ margin-top:20px; }
+  .resource-group h3{
+    font-size:.72rem; text-transform:uppercase; letter-spacing:.06em;
+    color: var(--sage); margin:0 0 10px; font-weight:600;
+  }
+  .resource-item{
+    display:block; padding:10px 0; border-bottom:1px solid var(--line);
+    color:var(--ink); text-decoration:none;
+  }
+  .resource-item:hover .r-title{ color:var(--accent); }
+  .resource-item .r-title{ font-size:.9rem; transition:color .15s; }
+  .resource-item .r-meta{ font-size:.75rem; color:var(--ink-dim); margin-top:2px; }
+
+  .empty-state{
+    color:var(--ink-dim); font-size:.85rem; line-height:1.7;
+    padding-top:8px;
+  }
+  .empty-state code{
+    background:var(--bg); padding:2px 6px; border-radius:3px;
+    color:var(--sage); font-size:.8rem;
+  }
+
+  #overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.3);
+    opacity:0; pointer-events:none; transition:opacity .3s; z-index:15;
+  }
+  #overlay.open{ opacity:1; pointer-events:auto; }
+
+  footer{
+    position:fixed; bottom:0; left:0; right:0;
+    padding: 16px 32px; font-size:.72rem; color:var(--ink-dim);
+    font-family: var(--sans);
+    pointer-events:none;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    #panel{ transition:none; }
+  }
+
+  @media (max-width: 640px){
+    header{ padding:20px 20px 10px; }
+    header h1{ font-size:1.2rem; }
+    header p{ display:none; }
+    #panel{ width:100%; max-width:100%; }
+    footer{ padding:12px 20px; font-size:.68rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="page-title">Feminist Theory</h1>
+  <p>Click a point to open its reading list.</p>
+</header>
+
+<svg id="graph"></svg>
+
+<div id="overlay" onclick="closePanel()"></div>
+
+<div id="panel">
+  <button class="close-btn" onclick="closePanel()" aria-label="Close">&times;</button>
+  <div class="panel-head">
+    <p class="eyebrow" id="panel-eyebrow">Branch</p>
+    <h2 id="panel-title">—</h2>
+    <p class="desc" id="panel-desc"></p>
+  </div>
+  <div id="resource-list"></div>
+</div>
+
+<footer>Curated by hand. Not exhaustive.</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="theme.js"></script>
+<script src="data.js"></script>
+<script>
+/* ============================================================
+   RENDER LOGIC — you shouldn't need to touch this file.
+   To add topics or resources, edit data.js.
+   To change colors, fonts, or sizes, edit theme.js.
+   ============================================================ */
+
+(function applyTheme(){
+  const root = document.documentElement.style;
+  const c = THEME.colors, f = THEME.fonts, s = THEME.sizing;
+  root.setProperty('--bg', c.background);
+  root.setProperty('--bg-soft', c.backgroundPanel);
+  root.setProperty('--ink', c.text);
+  root.setProperty('--ink-dim', c.textDim);
+  root.setProperty('--line', c.line);
+  root.setProperty('--accent', c.accent);
+  root.setProperty('--accent-dim', c.accentDim);
+  root.setProperty('--sage', c.branchHover);
+  root.setProperty('--sage-dim', c.branch);
+  root.setProperty('--serif', f.serifFont);
+  root.setProperty('--sans', f.sansFont);
+  root.setProperty('--title-size', s.titleSize);
+  root.setProperty('--node-label-size', s.nodeLabelSize);
+  root.setProperty('--center-label-size', s.centerLabelSize);
+  root.setProperty('--panel-width', s.panelWidth);
+})();
+
+if (GRAPH_DATA.title) {
+  document.getElementById('page-title').textContent = GRAPH_DATA.title;
+}
+
+const width = window.innerWidth;
+const height = window.innerHeight;
+
+const svg = d3.select('#graph');
+const g = svg.append('g');
+
+svg.call(d3.zoom().scaleExtent([0.4, 2.5]).on('zoom', (event) => {
+  g.attr('transform', event.transform);
+}));
+
+const centerNode = { id: '__center__', label: GRAPH_DATA.title || 'Feminist Theory', type: 'center' };
+const branchNodes = GRAPH_DATA.branches.map(b => ({ ...b, type: 'branch' }));
+const nodes = [centerNode, ...branchNodes];
+const links = branchNodes.map(b => ({ source: '__center__', target: b.id }));
+
+const simulation = d3.forceSimulation(nodes)
+  .force('link', d3.forceLink(links).id(d => d.id).distance(150).strength(0.6))
+  .force('charge', d3.forceManyBody().strength(-420))
+  .force('center', d3.forceCenter(width/2, height/2))
+  .force('collision', d3.forceCollide().radius(d => nodeRadius(d) + 24));
+
+const link = g.append('g')
+  .selectAll('line')
+  .data(links)
+  .join('line')
+  .attr('class', 'link');
+
+const node = g.append('g')
+  .selectAll('g')
+  .data(nodes)
+  .join('g')
+  .attr('class', d => 'node ' + d.type)
+  .call(drag(simulation))
+  .on('click', (event, d) => {
+    if (d.type === 'branch') openPanel(d);
+  });
+
+node.append('circle')
+  .attr('r', d => nodeRadius(d));
+
+node.append('text')
+  .text(d => d.label)
+  .attr('text-anchor', 'middle')
+  .attr('dy', d => nodeRadius(d) + 16);
+
+function nodeRadius(d){
+  if (d.type === 'center') return THEME.sizing.centerNodeRadius;
+  const count = (d.resources || []).reduce((sum, group) => sum + group.items.length, 0);
+  return THEME.sizing.branchNodeMinRadius + Math.min(count, 10) * THEME.sizing.branchNodeGrowth;
+}
+
+simulation.on('tick', () => {
+  link
+    .attr('x1', d => d.source.x)
+    .attr('y1', d => d.source.y)
+    .attr('x2', d => d.target.x)
+    .attr('y2', d => d.target.y);
+  node.attr('transform', d => `translate(${d.x},${d.y})`);
+});
+
+function drag(sim){
+  function dragstarted(event, d){
+    if (!event.active) sim.alphaTarget(0.3).restart();
+    d.fx = d.x; d.fy = d.y;
+  }
+  function dragged(event, d){
+    d.fx = event.x; d.fy = event.y;
+  }
+  function dragended(event, d){
+    if (!event.active) sim.alphaTarget(0);
+    d.fx = null; d.fy = null;
+  }
+  return d3.drag()
+    .on('start', dragstarted)
+    .on('drag', dragged)
+    .on('end', dragended);
+}
+
+const panel = document.getElementById('panel');
+const overlay = document.getElementById('overlay');
+
+function openPanel(d){
+  d3.selectAll('.node.branch').classed('active', false);
+  d3.selectAll('.node.branch').filter(n => n.id === d.id).classed('active', true);
+
+  document.getElementById('panel-eyebrow').textContent = d.eyebrow || 'Branch';
+  document.getElementById('panel-title').textContent = d.label;
+  document.getElementById('panel-desc').textContent = d.description || '';
+
+  const list = document.getElementById('resource-list');
+  list.innerHTML = '';
+
+  const groups = d.resources || [];
+  const hasAny = groups.some(g => g.items && g.items.length);
+
+  if (!hasAny){
+    list.innerHTML = `
+      <div class="empty-state">
+        No resources added yet for this branch.<br><br>
+        Add some by editing <code>data.js</code> — find the branch with
+        <code>id: "${d.id}"</code> and add items to its <code>resources</code> array.
+      </div>`;
+  } else {
+    groups.forEach(group => {
+      if (!group.items.length) return;
+      const section = document.createElement('div');
+      section.className = 'resource-group';
+      section.innerHTML = `<h3>${group.type}</h3>`;
+      group.items.forEach(item => {
+        const a = document.createElement('a');
+        a.className = 'resource-item';
+        a.href = item.url || '#';
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.innerHTML = `
+          <div class="r-title">${item.title}</div>
+          <div class="r-meta">${item.meta || ''}</div>
+        `;
+        section.appendChild(a);
+      });
+      list.appendChild(section);
+    });
+  }
+
+  panel.classList.add('open');
+  overlay.classList.add('open');
+}
+
+function closePanel(){
+  panel.classList.remove('open');
+  overlay.classList.remove('open');
+  d3.selectAll('.node.branch').classed('active', false);
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closePanel();
+});
+</script>
+</body>
+</html>
