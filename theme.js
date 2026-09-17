@@ -35,7 +35,7 @@ colors: {
 
   branch:            "#5C4E73",  // default topic node color (muted lilac-grey)
   branchHover:       "#9B7FC7",  // lighter lilac on hover
-}
+},
 
   // ---- Typography ----
   fonts: {
