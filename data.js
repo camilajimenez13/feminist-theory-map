@@ -55,7 +55,7 @@ const GRAPH_DATA = {
       label: "Second-Wave Feminism",
       eyebrow: "Historical wave",
       description: "Mid-20th century feminism addressing sexuality, family, the workplace, and reproductive rights, alongside sharp internal debates.",
-      resources: []
+      resources: [The Second Sex by Simone de Beauvoir]
     },
     {
       id: "third-wave",
