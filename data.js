@@ -66,7 +66,7 @@ const GRAPH_DATA = {
         {
           type: "Books",
           items: [
-            { title: "The Second Sex" }
+            { title: "The Second Sex", url: "https://en.wikipedia.org/wiki/The_Second_Sex", meta: "Simone de Beauvoir, 1949" }
           ]
         }
       ]
