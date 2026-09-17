@@ -23,19 +23,19 @@
 const THEME = {
 
   // ---- Colors ----
-  colors: {
-    background:       "#15130F",  // page background
-    backgroundPanel:   "#1C1A15",  // side panel background
-    text:              "#EDE7DA",  // main text color
-    textDim:           "#A9A392",  // secondary/muted text (descriptions, meta info)
-    line:              "#3A362C",  // connecting lines between nodes, dividers, borders
+colors: {
+  background:       "#1E1926",  // deep plum-black background
+  backgroundPanel:   "#26202F",  // side panel, slightly lighter
+  text:              "#EFE9F5",  // near-white with a lilac tint
+  textDim:           "#B4A8C7",  // muted lilac-grey for secondary text
+  line:              "#3E3450",  // connecting lines, dividers
 
-    accent:            "#B23A4E",  // center node + active/selected node + hover link color
-    accentDim:         "#6E2A34",  // reserved for darker accent use
+  accent:            "#B08BD9",  // lilac — center node + active node + hover link color
+  accentDim:         "#7A5A9E",  // deeper lilac, reserved use
 
-    branch:            "#4A5443",  // default color of the outer topic nodes
-    branchHover:       "#7C8A70",  // color when hovering a topic node
-  },
+  branch:            "#5C4E73",  // default topic node color (muted lilac-grey)
+  branchHover:       "#9B7FC7",  // lighter lilac on hover
+}
 
   // ---- Typography ----
   fonts: {
